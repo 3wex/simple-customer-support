@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 
 from langchain_groq import ChatGroq
-from langgraph.graph import StateGraph, START, MessagesState
+from langgraph.graph import StateGraph, START, END, MessagesState
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.messages import SystemMessage, HumanMessage
 
@@ -12,8 +12,7 @@ load_dotenv()
 llm = ChatGroq(
     model='openai/gpt-oss-120b',
     temperature= 0.1,
-    max_tokens= 256,
-    reasoning_format='hidden'
+    max_tokens=1024
 )
 
 SYSTEM_PROMPT = """
@@ -52,31 +51,6 @@ STRICT OPERATING RULES
 3.  Escalation Protocol (IMPORTANT):  If a customer begins swearing, gets extremely angry, or demands a manager, immediately stop attempting to solve the problem and reply with EXACTLY this sentence and nothing else:
 'حقك علينا، برفع طلبك لمدير الفرع وبيتواصل معك بأقرب وقت'
 
-EXAMPLES:
-Example 1: 
-User: السلام عليكم، عندكم ماتشا؟ وبكم؟
-Bader: وعليكم السلام، هلا والله! حياك الله يالغالي. إي نعم عندنا آيس ماتشا تبرد على قلبك، سعرها 26 ريال شامل الضريبة. تآمر على شيء ثاني؟
-
-Example 2: 
-User: أنا طالب جامعي وأبي أطلب أونلاين، ممكن تعطيني كود الخصم؟
-Bader: يا هلا ومسهلا بك. أبشر، خصم الطلاب 10% موجود طال عمرك، بس تراه مخصص لطلبات الفروع وما نقدر نطلع له كود أونلاين. متى ما شرفتنا بأي فرع من فروعنا، بس ورّ الكاشير بطاقتك الجامعية وأبشر بالخصم.
-
-Example 3: 
-User: طلبت قهوة من جاهز ولها ساعة ما وصلت، بردت القهوة وش هالتأخير!
-Bader: يا هلا بك، وعذراً على هالتأخير اللي صار. لأن طلبك عن طريق جاهز، ياليت طال عمرك تتواصل مع خدمة العملاء بتطبيقهم وهم بيحلون لك الإشكالية ويعوضونك. سم، أقدر أخدمك بأي استفسار ثاني؟
-
-Example 4: 
-User: قهوتكم سيئة وخدمتكم أسوأ، أنتم نصابين جيبوا لي المدير الحين!!
-Bader: حقك علينا، برفع طلبك لمدير الفرع وبيتواصل معك بأقرب وقت
-
-Example 5: 
-User: عندي عزيمة بعد ثلاث أيام وابي كوفي بوكس أو ضيافة، وش عندكم؟
-Bader: حياك الله، وأبشر باللي يبيض وجهك في عزيمتك! عندنا خدمة الضيافة الخارجية بـ 1500 ريال لمدة 4 ساعات. الخدمة تشمل باريستا يضبط ضيوفك بـ 50 كوب. وبما أن مناسبتك بعد 3 أيام يمدينا نضبطك، لأن الحجز لازم يكون قبلها بـ 48 ساعة. حاب نأكد لك الحجز؟
-
-Example 6: 
-User: أخذت فلات وايت من فرع الملقا وكان طعم البن محروق، أبي فلوسي ترجع.
-Bader: هلا والله، المعذرة منك على هالتجربة. سياسة نواذر طال عمرك ما فيها استرجاع كاش، بس أبشر باللي يرضيك، نقدر نبدل لك المشروب مجاناً من نفس الفرع. شرفنا بأي وقت والشباب هناك بيضبطونك بأحلى فلات وايت.
-
 """
 
 
@@ -87,13 +61,14 @@ def call_llm(state: MessagesState):
     return {'messages': [response]}
     
     
-builder = StateGraph(MessagesState)
-builder.add_node("bader", call_llm)
-builder.add_edge(START, "bader")
+graph = StateGraph(MessagesState)
+graph.add_node("bader", call_llm)
+graph.add_edge(START, "bader")
+graph.add_edge("bader", END)
 
 
 checkpointer = InMemorySaver()
-bader_graph = builder.compile(checkpointer=checkpointer)
+bader_graph = graph.compile(checkpointer=checkpointer)
 
 
 
